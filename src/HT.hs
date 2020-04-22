@@ -70,21 +70,18 @@ reachableEventually h t = go (S.singleton t)
            then ts
            else go ts'
 
--- gen :: Int -> HT -> Ty -> [Description]
--- gen n h t = Eventually <$> genC n h t
-
-gen :: Int -> HT -> Ty -> [Description]
-gen 0 _ _ = pure Top
-gen n h t = [Eventually d | t' <- reach, d <- genC n h t']
+allSparseDescriptions :: Int -> HT -> Ty -> [Description]
+allSparseDescriptions 0 _ _ = pure Top
+allSparseDescriptions n h t = [Eventually d | t' <- reach, d <- allSparseDescriptions n h t']
   where
     reach = S.toList $ reachableEventually h t
 
-genC :: Int -> HT -> Ty -> [Description]
-genC 0 _ _ = pure Top
-genC n h t = do
+allSparseDescriptions' :: Int -> HT -> Ty -> [Description]
+allSparseDescriptions' 0 _ _ = pure Top
+allSparseDescriptions' n h t = do
   (c, ts) <- cs
   ms <- splitN n' (length ts)
-  Cons c <$> sequence [gen m h ty | (m, ty) <- zip ms ts]
+  Cons c <$> sequence [allSparseDescriptions m h ty | (m, ty) <- zip ms ts]
   where
     cs = h M.! t
     n' =
@@ -117,7 +114,8 @@ type ThrownAway = Int
 
 ccomb :: Ord a => Spec a -> Int -> Gen ([a], Int)
 ccomb spec k = do
-  (es, ta) <- fst <$> genTerms (0 :: Int) (0 :: Int) (S.fromList $ gen k h ty) S.empty
+  (es, ta) <- fst <$> genTerms (0 :: Int) (0 :: Int)
+              (S.fromList $ allSparseDescriptions k h ty) S.empty
   pure (S.toList es, ta)
   where
     h = specH spec
